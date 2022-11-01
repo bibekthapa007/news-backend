@@ -1,85 +1,66 @@
-import { DataTypes, Model, NumberDataTypeOptions } from 'sequelize';
+import mongoose, { Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
-import { sequelize } from '../utils/sequelize';
 
-class User extends Model {
-  declare id: number;
-  declare name: string;
-  declare email: string;
-  declare verified: boolean;
-  declare password: string;
-  declare created_at: Date;
-  declare updated_at: Date;
+export interface IUser extends Document {
+  _id: string;
+  name: string;
+  email: string;
+  imageLink: string;
+  verified: boolean;
+  password: string;
+  role: string;
 
-  declare validPassword: (password: string) => Promise<boolean>;
-  declare getHashed: (password: string) => Promise<string>;
-  declare beforeCreate: (user: any) => Promise<void>;
+  isValidPassword: (password: string) => Promise<boolean>;
+  beforeCreate: (user: any) => Promise<void>;
 }
-User.init(
+
+const UserSchema: Schema = new Schema(
   {
-    id: {
-      type: DataTypes.INTEGER(11 as NumberDataTypeOptions),
-      allowNull: false,
-      primaryKey: true,
-      autoIncrement: true,
-    },
-    name: {
-      type: DataTypes.STRING(255),
-      allowNull: true,
-    },
+    name: { type: 'string', trim: true, minLength: 6, maxlength: 100, required: true },
     email: {
-      type: DataTypes.STRING(255),
-      allowNull: false,
-      validate: {
-        isEmail: {
-          msg: 'Must be a valid email address',
-        },
-      },
+      type: 'string',
+      trim: true,
+      unique: true,
+      required: true,
     },
-    verified: {
-      type: DataTypes.INTEGER(1 as NumberDataTypeOptions),
-      allowNull: false,
-      defaultValue: 0,
-    },
-    password: {
-      type: DataTypes.STRING(255),
-      allowNull: false,
-    },
-    created_at: {
-      type: 'TIMESTAMP',
-      field: 'created_at',
-      defaultValue: sequelize.literal('CURRENT_TIMESTAMP'),
-      allowNull: false,
-    },
-    updated_at: {
-      type: 'TIMESTAMP',
-      field: 'updated_at',
-      defaultValue: sequelize.literal('CURRENT_TIMESTAMP'),
-      allowNull: false,
-    },
+    imageLink: { type: 'string', required: true },
+    verified: { type: 'boolean', default: false },
+    password: { type: 'string', minLength: 6, maxLength: 100, required: false },
+    role: { type: 'string', enum: ['superadmin', 'admin', 'user'] },
   },
   {
-    sequelize,
     timestamps: true,
-    tableName: 'user',
-    modelName: 'user',
-    updatedAt: 'updated_at',
-    createdAt: 'created_at',
-    indexes: [{ unique: true, fields: ['email'] }],
   },
 );
-const saltRounds = 10;
-User.prototype.validPassword = async function (password) {
-  return await bcrypt.compare(password, this.password);
-};
-User.prototype.getHashed = async function (password) {
-  const salt = await bcrypt.genSalt(saltRounds);
-  return await bcrypt.hash(password, salt);
-};
-User.beforeCreate(async (user) => {
-  if (user.password) {
-    const salt = await bcrypt.genSalt(saltRounds);
-    user.password = await bcrypt.hash(user.password, salt);
+
+UserSchema.set('toJSON', {
+  transform: function (doc, ret, options) {
+    // ret.id = ret._id;
+    delete ret.password;
+    //   delete ret._id;
+    delete ret.__v;
+  },
+});
+
+UserSchema.pre('save', function (next) {
+  if (!this.password) next();
+  if (!(this.isModified('password') || this.isNew)) next();
+
+  try {
+    const salt = bcrypt.genSaltSync(10);
+    this.password = bcrypt.hashSync(this.password, salt);
+    next();
+  } catch (error: any) {
+    next(error);
   }
 });
-export default User;
+
+UserSchema.methods.isValidPassword = async function (password: string) {
+  try {
+    return await bcrypt.compare(password, this.password);
+  } catch (error: any) {
+    throw new Error(error);
+  }
+};
+
+export default mongoose.model<IUser>('User', UserSchema);

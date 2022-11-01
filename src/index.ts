@@ -5,9 +5,9 @@ import morgan from 'morgan';
 import cors from 'cors';
 import helmet from 'helmet';
 import multer from 'multer';
+import mongoose from 'mongoose';
 
 import Logger from './utils/Logger';
-import { sequelize } from './utils/sequelize';
 import ApiRoute from './routes/apiRoute';
 import { errorHandler } from './middlewares/errorhandler';
 
@@ -27,7 +27,7 @@ app.disable('x-powered-by');
 app.use(morgan('dev'));
 app.use(multer().single('file'));
 
-app.get('/', (req, res) => res.status(200).send('<h1>Vaccine Management App</h1>'));
+app.get('/', (req, res) => res.status(200).send('<h1>Sojo News App</h1>'));
 app.use('/api', ApiRoute);
 app.use(errorHandler);
 
@@ -36,19 +36,18 @@ server.listen(port, () => {
   Logger.info(`Server started running on port ${port}`);
 });
 
-sequelize
-  .authenticate()
-  .then(() => {
-    Logger.info('Database Connection has been established successfully.');
+mongoose
+  .connect(process.env.MONGO_CONNECT_URL as string, {
+    // retryWrites: true,
+    // w: 'majority',
   })
-  .catch((error) => {
-    Logger.error('Unable to connect to the database:', error);
-  });
+  .then(() => Logger.info('Database Connection has been established successfully.'))
+  .catch(error => Logger.error('Unable to connect to the database:', error));
 
-process.on('uncaughtException', (error) => {
+process.on('uncaughtException', error => {
   Logger.error('uncaughtException', error);
 });
 
-process.on('unhandledRejection', (error) => {
+process.on('unhandledRejection', error => {
   Logger.error('unhandledRejection', error);
 });

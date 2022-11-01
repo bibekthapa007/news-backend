@@ -19,25 +19,22 @@ function signup(req: Request, res: Response, next: NextFunction) {
   if (error) throw new ValidationError(error.details[0].message);
 
   const name = value.email.substring(0, value.email.indexOf('@'));
-  User.findOne({ where: { email: value.email } })
-    .then((user) => {
+  User.findOne({ email: value.email })
+    .then(user => {
       if (user) {
         return res.status(HttpStatus.CONFLICT).send({
           message: 'email address is already registered! Please login to continue.',
           error: true,
         });
       }
-
       User.create({ ...value, name, verified: true })
-        .then((user) => {
-          let userData = user.get({ plain: true });
-
+        .then(user => {
           const token = createJwtToken({
-            id: userData.id,
-            email: userData.email,
+            id: user.id,
+            email: user.email,
           });
 
-          return res.status(200).send({ message: 'Login Successfully', user: userData, token });
+          return res.status(200).send({ message: 'Login Successfully', user, token });
         })
         .catch(next);
     })
@@ -52,21 +49,20 @@ function signin(req: Request, res: Response, next: NextFunction) {
 
   if (error) throw new ValidationError(error.details[0].message);
 
-  User.findOne({ where: { email: value.email } })
-    .then(async (user) => {
+  User.findOne({ email: value.email })
+    .then(async user => {
       if (!user) {
         return next(new NotFoundError('You have entered an invalid email or password'));
-      } else if (!(await user.validPassword(value.password))) {
+      } else if (!(await user.isValidPassword(value.password))) {
         return next(new TokenError('You have entered an invalid email or password'));
       }
-      let userData = user.get({ plain: true });
 
       const token = createJwtToken({
-        id: userData.id,
-        email: userData.email,
+        id: user.id,
+        email: user.email,
       });
 
-      return res.status(200).send({ message: 'Login Successfully', user: userData, token });
+      return res.status(200).send({ message: 'Login Successfully', user, token });
     })
     .catch(next);
 }
@@ -74,8 +70,8 @@ function signin(req: Request, res: Response, next: NextFunction) {
 function check(req: Request, res: Response, next: NextFunction) {
   if (!req.jwtPayload) throw new TokenError('User unauthorized.');
 
-  User.findOne({ where: { id: req.jwtPayload.id } })
-    .then((user) => {
+  User.findOne({ id: req.jwtPayload.id })
+    .then(user => {
       if (!user) return res.status(404).send({ message: 'User not found.' });
       return res.status(200).send({ user, message: 'User is authorized.' });
     })

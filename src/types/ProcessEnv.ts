@@ -11,5 +11,6 @@ declare namespace NodeJS {
     JWT_EXPIRATION: string;
     SERVER_URL: string;
     CLIENT_URL: string;
+    MONGO_CONNECT_URL: string;
   }
 }
