@@ -15,12 +15,11 @@ const client = new OAuth2Client();
 
 async function verifyGoogleIdToken(token: string) {
   let GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-  let ticket, payload;
-  ticket = await client.verifyIdToken({
+  let ticket = await client.verifyIdToken({
     idToken: token,
     audience: GOOGLE_CLIENT_ID,
   });
-  payload = ticket.getPayload();
+  let payload = ticket.getPayload();
   return payload;
 }
 

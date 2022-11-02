@@ -12,26 +12,29 @@ const createJwtToken = (payload: JwtPayload): string => {
 };
 
 function checkJwt(req: Request, res: Response, next: NextFunction) {
-  let token: any;
-  if (req.headers['authorization']) token = req.headers['authorization'].split(' ')[1];
-  if (req.headers['x-access-token']) token = req.headers['x-access-token'];
-  if (req.headers['token']) token = req.headers['token'];
-  if (req.query.token) token = req.query.token;
+  try {
+    let token: any;
+    if (req.headers['authorization']) token = req.headers['authorization'].split(' ')[1];
+    if (req.headers['x-access-token']) token = req.headers['x-access-token'];
+    if (req.headers['token']) token = req.headers['token'];
+    if (req.query.token) token = req.query.token;
 
-  token = <string>token;
-  if (!token) {
-    return next(new TokenError('Token Missing'));
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET_KEY as string, function (err: any, data: any) {
-    if (err) {
-      return next(new TokenError(err.message));
+    token = <string>token;
+    if (!token) {
+      return next(new TokenError('Token Missing'));
     }
-    data = <JwtPayload>data;
-    req.jwtPayload = data;
-    if (!(data && data.id)) return res.status(500).send({ message: 'Jwt token not found.' });
-    next();
-  });
+
+    jwt.verify(token, process.env.JWT_SECRET_KEY as string, function (err: any, data: any) {
+      if (err) return next(new TokenError(err.message));
+
+      data = <JwtPayload>data;
+      req.jwtPayload = data;
+      if (!(data && data.id)) return next(new Error('Jwt token  not found.'));
+      next();
+    });
+  } catch (error) {
+    next(error);
+  }
 }
 
 export { createJwtToken, checkJwt };
