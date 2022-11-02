@@ -25,102 +25,98 @@ async function verifyGoogleIdToken(token: string) {
 }
 
 async function googleLogin(req: Request, res: Response, next: NextFunction) {
-  let { error, value } = Joi.object({
-    id_token: Joi.string().required(),
-  }).validate(req.body);
-
-  if (error) throw new ValidationError(error.details[0].message);
   try {
+    let { error, value } = Joi.object({
+      id_token: Joi.string().required(),
+    }).validate(req.body);
+
+    if (error) throw new ValidationError(error.details[0].message);
     let payload = await verifyGoogleIdToken(value.id_token as string);
 
     if (!payload) return next(new Error('payload not found.'));
     if (!payload?.email) return next(new Error('payload email not found.'));
 
     const name = payload.email.substring(0, value.email.indexOf('@'));
-    User.create({ ...payload, name, role: 'user', verified: true })
-      .then(user => {
-        const token = createJwtToken({
-          id: user.id,
-          email: user.email,
-          role: user.role,
-        });
-
-        return res.status(200).send({ message: 'Login Successfully', user, token });
-      })
-      .catch(next);
+    let user = await User.create({ ...payload, name, role: 'user', verified: true });
+    const token = createJwtToken({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    });
+    return res.status(200).send({ message: 'Login Successfully', user, token });
   } catch (error) {
     next(error);
   }
 }
 
-function signup(req: Request, res: Response, next: NextFunction) {
-  let { error, value } = Joi.object({
-    email: Joi.string().required(),
-    password: Joi.string().required(),
-  }).validate(req.body);
+async function signup(req: Request, res: Response, next: NextFunction) {
+  try {
+    let { error, value } = Joi.object({
+      email: Joi.string().required(),
+      password: Joi.string().required(),
+    }).validate(req.body);
 
-  if (error) throw new ValidationError(error.details[0].message);
+    if (error) return next(new ValidationError(error.details[0].message));
 
-  const name = value.email.substring(0, value.email.indexOf('@'));
-  User.findOne({ email: value.email })
-    .then(user => {
-      if (user) {
-        return res.status(HttpStatus.CONFLICT).send({
-          message: 'email address is already registered! Please login to continue.',
-          error: true,
-        });
-      }
-      User.create({ ...value, name, verified: true })
-        .then(user => {
-          const token = createJwtToken({
-            id: user.id,
-            email: user.email,
-            role: user.role,
-          });
-
-          return res.status(200).send({ message: 'Login Successfully', user, token });
-        })
-        .catch(next);
-    })
-    .catch(next);
-}
-
-function signin(req: Request, res: Response, next: NextFunction) {
-  let { error, value } = Joi.object({
-    email: Joi.string().required(),
-    password: Joi.string().required(),
-  }).validate(req.body);
-
-  if (error) throw new ValidationError(error.details[0].message);
-
-  User.findOne({ email: value.email })
-    .then(async user => {
-      if (!user) {
-        return next(new NotFoundError('You have entered an invalid email or password'));
-      } else if (!(await user.isValidPassword(value.password))) {
-        return next(new TokenError('You have entered an invalid email or password'));
-      }
-
-      const token = createJwtToken({
-        id: user.id,
-        email: user.email,
-        role: user.role,
+    const name = value.email.substring(0, value.email.indexOf('@'));
+    let oldUser = await User.findOne({ email: value.email });
+    if (oldUser) {
+      return res.status(HttpStatus.CONFLICT).send({
+        message: 'email address is already registered! Please login to continue.',
+        error: true,
       });
+    }
+    let user = await User.create({ ...value, name, verified: true });
+    const token = createJwtToken({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    });
 
-      return res.status(200).send({ message: 'Login Successfully', user, token });
-    })
-    .catch(next);
+    return res.status(200).send({ message: 'Login Successfully', user, token });
+  } catch (error) {
+    next(error);
+  }
 }
 
-function check(req: Request, res: Response, next: NextFunction) {
-  if (!req.jwtPayload) throw new TokenError('User unauthorized.');
+async function signin(req: Request, res: Response, next: NextFunction) {
+  try {
+    let { error, value } = Joi.object({
+      email: Joi.string().required(),
+      password: Joi.string().required(),
+    }).validate(req.body);
 
-  User.findOne({ id: req.jwtPayload.id })
-    .then(user => {
-      if (!user) return res.status(404).send({ message: 'User not found.' });
-      return res.status(200).send({ user, message: 'User is authorized.' });
-    })
-    .catch(next);
+    if (error) return next(new ValidationError(error.details[0].message));
+
+    let user = await User.findOne({ email: value.email });
+    if (!user) {
+      return next(new NotFoundError('You have entered an invalid email or password'));
+    } else if (!(await user.isValidPassword(value.password))) {
+      return next(new TokenError('You have entered an invalid email or password'));
+    }
+
+    const token = createJwtToken({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
+    return res.status(200).send({ message: 'Login Successfully', user, token });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function check(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.jwtPayload) throw new TokenError('User unauthorized.');
+
+    let user = await User.findOne({ id: req.jwtPayload.id });
+    if (!user) return res.status(404).send({ message: 'User not found.' });
+    return res.status(200).send({ user, message: 'User is authorized.' });
+  } catch (error) {
+    next(error);
+  }
 }
 
 export default { signup, signin, check, googleLogin };
