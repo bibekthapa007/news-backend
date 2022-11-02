@@ -19,5 +19,6 @@ router.use(authLimiter);
 router.route('/signup').post(authController.signup);
 router.route('/signin').post(authController.signin);
 router.get('/check', checkJwt, authController.check);
+router.post('/google', authController.googleLogin);
 
 export default router;
