@@ -4,8 +4,7 @@ import HttpStatus from 'http-status-codes';
 import NotFoundError from '../errors/notFound';
 import ValidationError from '../errors/validation';
 import Category from '../models/CategoryModel';
-import cloudinary from '../utils/cloudinary';
-import streamifier from 'streamifier';
+import { uploadFromBuffer } from '../utils/cloudinary';
 
 async function getCategoryList(req: Request, res: Response, next: NextFunction) {
   try {
@@ -23,37 +22,14 @@ async function getCategoryById(req: Request, res: Response, next: NextFunction) 
       id: Joi.string().required(),
     }).validate({ id: category_id });
 
-    if (error) throw new ValidationError(error.details[0].message);
+    if (error) next(new ValidationError(error.details[0].message));
 
     let category = await Category.findOne({ _id: value.id });
-    if (!category) throw new NotFoundError('category not found');
+    if (!category) next(new NotFoundError('category not found'));
     return res.status(200).send({ message: 'category fetched successfully.', category });
   } catch (error) {
     next(error);
   }
-}
-
-function uploadFromBuffer(req: Request) {
-  return new Promise((resolve, reject) => {
-    const file = req.file as Express.Multer.File;
-    if (!file.buffer) {
-      reject('Buffer not found');
-    }
-    let cld_upload_stream = cloudinary.v2.uploader.upload_stream(
-      {
-        folder: 'category',
-      },
-      (error, result) => {
-        if (result) {
-          resolve(result);
-        } else {
-          reject(error);
-        }
-      },
-    );
-
-    streamifier.createReadStream(file.buffer).pipe(cld_upload_stream);
-  });
 }
 
 async function createCategory(req: Request, res: Response, next: NextFunction) {
@@ -68,7 +44,7 @@ async function createCategory(req: Request, res: Response, next: NextFunction) {
     let result: null | any = null;
     if (req.file) {
       try {
-        result = await uploadFromBuffer(req);
+        result = await uploadFromBuffer(req, 'category');
       } catch (error) {
         next(error);
       }
@@ -99,10 +75,9 @@ async function updateCategory(req: Request, res: Response, next: NextFunction) {
 
     if (error) next(new ValidationError(error.details[0].message));
 
-    let oldCategory = await Category.findOne({ where: { id: value.id } });
-    if (!oldCategory) return next(new NotFoundError('category not found'));
-
     let category = await Category.findOneAndUpdate({ _id: value._id }, value, { new: true });
+    if (!category) return next(new NotFoundError('category not found'));
+
     return res.status(200).send({ message: 'category updated successfully.', category });
   } catch (error) {
     next(error);
@@ -116,12 +91,11 @@ async function deleteCategory(req: Request, res: Response, next: NextFunction) {
       _id: Joi.string().required(),
     }).validate({ _id: category_id });
 
-    if (error) throw new ValidationError(error.details[0].message);
+    if (error) next(new ValidationError(error.details[0].message));
 
-    let oldCategory = await Category.findOne({ id: value.id });
-    if (!oldCategory) return next(new NotFoundError('category not found'));
+    let category = await Category.findOneAndDelete({ _id: value._id });
+    if (!category) return next(new NotFoundError('category not found'));
 
-    let category = await Category.deleteOne({ _id: value._id });
     return res.status(200).send({ message: 'category deleted successfully.', category });
   } catch (error) {
     next(error);

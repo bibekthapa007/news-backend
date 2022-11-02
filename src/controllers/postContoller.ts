@@ -1,12 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import Joi from 'joi';
 import HttpStatus from 'http-status-codes';
-import streamifier from 'streamifier';
 
 import NotFoundError from '../errors/notFound';
 import ValidationError from '../errors/validation';
 import Post from '../models/PostModel';
-import cloudinary from '../utils/cloudinary';
+import { uploadFromBuffer } from '../utils/cloudinary';
 
 async function getPostList(req: Request, res: Response, next: NextFunction) {
   try {
@@ -34,29 +33,6 @@ async function getPostById(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-function uploadFromBuffer(req: Request) {
-  return new Promise((resolve, reject) => {
-    const file = req.file as Express.Multer.File;
-    if (!file.buffer) {
-      reject('Buffer not found');
-    }
-    let cld_upload_stream = cloudinary.v2.uploader.upload_stream(
-      {
-        folder: 'post',
-      },
-      (error, result) => {
-        if (result) {
-          resolve(result);
-        } else {
-          reject(error);
-        }
-      },
-    );
-
-    streamifier.createReadStream(file.buffer).pipe(cld_upload_stream);
-  });
-}
-
 async function createPost(req: Request, res: Response, next: NextFunction) {
   try {
     let { error, value } = Joi.object({
@@ -66,12 +42,12 @@ async function createPost(req: Request, res: Response, next: NextFunction) {
       category: Joi.string().required(),
     }).validate(req.body);
 
-    if (error) throw new ValidationError(error.details[0].message);
+    if (error) next(new ValidationError(error.details[0].message));
 
     let result: null | any = null;
     if (req.file) {
       try {
-        result = await uploadFromBuffer(req);
+        result = await uploadFromBuffer(req, 'post');
       } catch (error) {
         next(error);
       }
@@ -101,10 +77,9 @@ async function updatePost(req: Request, res: Response, next: NextFunction) {
 
     if (error) next(new ValidationError(error.details[0].message));
 
-    let oldPost = await Post.findOne({ where: { id: value.id } });
-    if (!oldPost) next(new NotFoundError('post not found'));
-
     let post = await Post.findOneAndUpdate({ _id: value._id }, value, { new: true });
+    if (!post) next(new NotFoundError('post not found'));
+
     return res.status(200).send({ message: 'post updated successfully.', post });
   } catch (error) {
     next(error);
@@ -120,10 +95,9 @@ async function deletePost(req: Request, res: Response, next: NextFunction) {
 
     if (error) next(new ValidationError(error.details[0].message));
 
-    let oldPost = await Post.findOne({ id: value.id });
-    if (!oldPost) next(new NotFoundError('post not found'));
+    let post = await Post.findOneAndDelete({ id: value.id });
+    if (!post) next(new NotFoundError('post not found'));
 
-    let post = await Post.deleteOne({ id: value.id });
     return res.status(200).send({ message: 'post deleted successfully.', post });
   } catch (error) {
     next(error);
