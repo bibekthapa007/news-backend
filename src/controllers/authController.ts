@@ -51,7 +51,7 @@ async function googleLogin(req: Request, res: Response, next: NextFunction) {
 async function signup(req: Request, res: Response, next: NextFunction) {
   try {
     let { error, value } = Joi.object({
-      email: Joi.string().required(),
+      email: Joi.string().email().required(),
       password: Joi.string().required(),
     }).validate(req.body);
 
@@ -81,7 +81,7 @@ async function signup(req: Request, res: Response, next: NextFunction) {
 async function signin(req: Request, res: Response, next: NextFunction) {
   try {
     let { error, value } = Joi.object({
-      email: Joi.string().required(),
+      email: Joi.string().email().required(),
       password: Joi.string().required(),
     }).validate(req.body);
 
