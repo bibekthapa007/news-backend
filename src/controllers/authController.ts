@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import Joi from 'joi';
 import HttpStatus from 'http-status-codes';
+import { OAuth2Client } from 'google-auth-library';
 
 import NotFoundError from '../errors/notFound';
 import TokenError from '../errors/token';
@@ -32,6 +33,7 @@ function signup(req: Request, res: Response, next: NextFunction) {
           const token = createJwtToken({
             id: user.id,
             email: user.email,
+            role: user.role,
           });
 
           return res.status(200).send({ message: 'Login Successfully', user, token });
@@ -60,6 +62,7 @@ function signin(req: Request, res: Response, next: NextFunction) {
       const token = createJwtToken({
         id: user.id,
         email: user.email,
+        role: user.role,
       });
 
       return res.status(200).send({ message: 'Login Successfully', user, token });
