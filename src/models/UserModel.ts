@@ -43,8 +43,8 @@ UserSchema.set('toJSON', {
 });
 
 UserSchema.pre('save', function (next) {
-  if (!this.password) next();
-  if (!(this.isModified('password') || this.isNew)) next();
+  if (!this.password) return next();
+  if (!(this.isModified('password') || this.isNew)) return next();
 
   try {
     const salt = bcrypt.genSaltSync(10);

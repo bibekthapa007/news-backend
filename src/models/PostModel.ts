@@ -1,4 +1,4 @@
-import mongoose, { Schema, ObjectId, SchemaTypes } from 'mongoose';
+import mongoose, { Schema, SchemaTypes } from 'mongoose';
 import slugify from 'slugify';
 
 export interface IPost extends Document {
@@ -37,8 +37,9 @@ const PostSchema: Schema = new Schema(
   },
 );
 
-PostSchema.pre<IPost>('save', function (next) {
-  this.slug = slugify(this.title, { lower: true });
+PostSchema.pre('save', function (next) {
+  if (!(this.isModified('title') || this.isNew)) return next();
+  this.slug = `${slugify(this.title, { lower: true })}-${Date.now()}`;
   next();
 });
 
