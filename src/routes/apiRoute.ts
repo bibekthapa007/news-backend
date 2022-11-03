@@ -8,7 +8,6 @@ const router = Router();
 
 router.use('/auth', AuthRoute);
 router.use('/category', CategoryRoute);
-router.use(checkJwt);
 router.use('/post', PostRoute);
 
 router.get('/', (req, res) => res.status(200).send('<h1>Sojo News App Api</h1>'));
