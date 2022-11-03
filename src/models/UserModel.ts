@@ -23,9 +23,9 @@ const UserSchema: Schema = new Schema(
       unique: true,
       required: true,
     },
-    imageLink: { type: 'string', required: true },
+    imageLink: { type: 'string', required: false, trim: true },
     verified: { type: 'boolean', default: false },
-    password: { type: 'string', minLength: 6, maxLength: 100, required: false },
+    password: { type: 'string', trim: true, minLength: 6, maxLength: 100, required: false },
     role: { type: 'string', enum: ['superadmin', 'admin', 'user'] },
   },
   {
