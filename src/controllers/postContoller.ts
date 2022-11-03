@@ -23,7 +23,7 @@ async function getPostById(req: Request, res: Response, next: NextFunction) {
       id: Joi.string().required(),
     }).validate({ id: post_id });
 
-    if (error) next(new ValidationError(error.details[0].message));
+    if (error) return next(new ValidationError(error.details[0].message));
 
     let post = await Post.findOne({ _id: value.id });
     if (!post) next(new NotFoundError('post not found'));
@@ -42,7 +42,7 @@ async function createPost(req: Request, res: Response, next: NextFunction) {
       category: Joi.string().required(),
     }).validate(req.body);
 
-    if (error) next(new ValidationError(error.details[0].message));
+    if (error) return next(new ValidationError(error.details[0].message));
 
     let result: null | any = null;
     if (req.file) {
@@ -75,7 +75,7 @@ async function updatePost(req: Request, res: Response, next: NextFunction) {
       tags: Joi.array<string>(),
     }).validate({ ...req.body, _id: post_id });
 
-    if (error) next(new ValidationError(error.details[0].message));
+    if (error) return next(new ValidationError(error.details[0].message));
 
     let post = await Post.findOneAndUpdate({ _id: value._id }, value, { new: true });
     if (!post) next(new NotFoundError('post not found'));
@@ -93,10 +93,10 @@ async function deletePost(req: Request, res: Response, next: NextFunction) {
       id: Joi.number().required(),
     }).validate({ id: post_id });
 
-    if (error) next(new ValidationError(error.details[0].message));
+    if (error) return next(new ValidationError(error.details[0].message));
 
     let post = await Post.findOneAndDelete({ id: value.id });
-    if (!post) next(new NotFoundError('post not found'));
+    if (!post) return next(new NotFoundError('post not found'));
 
     return res.status(200).send({ message: 'post deleted successfully.', post });
   } catch (error) {

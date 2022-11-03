@@ -25,7 +25,7 @@ async function getCategoryById(req: Request, res: Response, next: NextFunction) 
     if (error) next(new ValidationError(error.details[0].message));
 
     let category = await Category.findOne({ _id: value.id });
-    if (!category) next(new NotFoundError('category not found'));
+    if (!category) return next(new NotFoundError('category not found'));
     return res.status(200).send({ message: 'category fetched successfully.', category });
   } catch (error) {
     next(error);
@@ -73,7 +73,7 @@ async function updateCategory(req: Request, res: Response, next: NextFunction) {
       image_link: Joi.string().allow(null),
     }).validate({ ...req.body, _id: category_id });
 
-    if (error) next(new ValidationError(error.details[0].message));
+    if (error) return next(new ValidationError(error.details[0].message));
 
     let category = await Category.findOneAndUpdate({ _id: value._id }, value, { new: true });
     if (!category) return next(new NotFoundError('category not found'));
@@ -91,7 +91,7 @@ async function deleteCategory(req: Request, res: Response, next: NextFunction) {
       _id: Joi.string().required(),
     }).validate({ _id: category_id });
 
-    if (error) next(new ValidationError(error.details[0].message));
+    if (error) return next(new ValidationError(error.details[0].message));
 
     let category = await Category.findOneAndDelete({ _id: value._id });
     if (!category) return next(new NotFoundError('category not found'));

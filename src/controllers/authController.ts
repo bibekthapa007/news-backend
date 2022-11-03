@@ -29,7 +29,7 @@ async function googleLogin(req: Request, res: Response, next: NextFunction) {
       id_token: Joi.string().required(),
     }).validate(req.body);
 
-    if (error) throw new ValidationError(error.details[0].message);
+    if (error) return next(new ValidationError(error.details[0].message));
     let payload = await verifyGoogleIdToken(value.id_token as string);
 
     if (!payload) return next(new Error('payload not found.'));
