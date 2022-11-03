@@ -52,7 +52,7 @@ async function signup(req: Request, res: Response, next: NextFunction) {
   try {
     let { error, value } = Joi.object({
       email: Joi.string().email().required(),
-      password: Joi.string().required(),
+      password: Joi.string().required().min(6).max(100),
     }).validate(req.body);
 
     if (error) return next(new ValidationError(error.details[0].message));
