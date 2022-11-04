@@ -1,4 +1,4 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose, { Schema, SchemaTypes } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 export interface IUser extends Document {
@@ -9,6 +9,7 @@ export interface IUser extends Document {
   verified: boolean;
   password: string;
   role: string;
+  releventCategories: string[];
 
   isValidPassword: (password: string) => Promise<boolean>;
   beforeCreate: (user: any) => Promise<void>;
@@ -27,6 +28,7 @@ const UserSchema: Schema = new Schema(
     verified: { type: 'boolean', default: false },
     password: { type: 'string', trim: true, minLength: 6, maxLength: 100, required: false },
     role: { type: 'string', enum: ['superadmin', 'admin', 'user'] },
+    releventCategories: [SchemaTypes.ObjectId],
   },
   {
     timestamps: true,
