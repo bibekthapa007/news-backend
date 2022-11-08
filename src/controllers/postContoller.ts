@@ -6,10 +6,63 @@ import NotFoundError from '../errors/notFound';
 import ValidationError from '../errors/validation';
 import Post from '../models/PostModel';
 import { uploadFromBuffer } from '../utils/cloudinary';
+import Logger from 'src/utils/Logger';
+import UserModel from 'src/models/UserModel';
 
 async function getPostList(req: Request, res: Response, next: NextFunction) {
   try {
-    let posts = await Post.find();
+    let perPage = parseInt(req.query.perPage as string) || 10;
+    let page = parseInt(req.query.page as string) || 1;
+    let skip = (page - 1) * perPage;
+
+    let posts = await Post.find().limit(perPage).skip(skip).sort({ createdAt: -1 });
+
+    return res.status(200).send({ message: 'posts fetched successfully.', posts });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getPostListByCategory(req: Request, res: Response, next: NextFunction) {
+  try {
+    let perPage = parseInt(req.query.perPage as string) || 10;
+    let page = parseInt(req.query.page as string) || 1;
+    let skip = (page - 1) * perPage;
+    let categoryId = req.params.categoryId;
+
+    let posts = await Post.find({ categories: { _id: categoryId } })
+      .limit(perPage)
+      .skip(skip)
+      .sort({ createdAt: -1 });
+
+    return res.status(200).send({ message: 'posts fetched successfully.', posts });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getRelaventPostList(req: Request, res: Response, next: NextFunction) {
+  try {
+    let perPage = parseInt(req.query.perPage as string) || 10;
+    let page = parseInt(req.query.page as string) || 1;
+    let skip = (page - 1) * perPage;
+    let filter = {};
+
+    if (req.jwtPayload) {
+      let user = await UserModel.findById(req.jwtPayload.id);
+
+      let releventCategories = user?.releventCategories;
+      if (!releventCategories || releventCategories.length === 0) {
+        return next(new Error('user has not selected any relevent categories.'));
+      }
+      if (releventCategories) {
+        Logger.info(releventCategories);
+        filter = { category: { _id: { $in: releventCategories } } };
+      }
+    }
+
+    let posts = await Post.find(filter).limit(perPage).skip(skip).sort({ createdAt: -1 });
+
     return res.status(200).send({ message: 'posts fetched successfully.', posts });
   } catch (error) {
     next(error);
@@ -18,10 +71,10 @@ async function getPostList(req: Request, res: Response, next: NextFunction) {
 
 async function getPostById(req: Request, res: Response, next: NextFunction) {
   try {
-    const post_id = req.params.post_id;
+    const postId = req.params.postId;
     let { error, value } = Joi.object({
       id: Joi.string().required(),
-    }).validate({ id: post_id });
+    }).validate({ id: postId });
 
     if (error) return next(new ValidationError(error.details[0].message));
 
@@ -39,7 +92,7 @@ async function createPost(req: Request, res: Response, next: NextFunction) {
       title: Joi.string().required(),
       description: Joi.string().required(),
       author: Joi.string().required(),
-      category: Joi.string().required(),
+      categories: Joi.array().items(Joi.string().required()),
     }).validate(req.body);
 
     if (error) return next(new ValidationError(error.details[0].message));
@@ -66,14 +119,14 @@ async function createPost(req: Request, res: Response, next: NextFunction) {
 
 async function updatePost(req: Request, res: Response, next: NextFunction) {
   try {
-    const post_id = req.params.post_id;
+    const postId = req.params.postId;
     let { error, value } = Joi.object({
       _id: Joi.string().required(),
       title: Joi.string(),
       description: Joi.string(),
       image_link: Joi.string().allow(null),
       tags: Joi.array<string>(),
-    }).validate({ ...req.body, _id: post_id });
+    }).validate({ ...req.body, _id: postId });
 
     if (error) return next(new ValidationError(error.details[0].message));
 
@@ -88,10 +141,10 @@ async function updatePost(req: Request, res: Response, next: NextFunction) {
 
 async function deletePost(req: Request, res: Response, next: NextFunction) {
   try {
-    const post_id = req.params.post_id;
+    const postId = req.params.postId;
     let { error, value } = Joi.object({
       id: Joi.number().required(),
-    }).validate({ id: post_id });
+    }).validate({ id: postId });
 
     if (error) return next(new ValidationError(error.details[0].message));
 
@@ -107,6 +160,8 @@ async function deletePost(req: Request, res: Response, next: NextFunction) {
 export default {
   getPostList,
   getPostById,
+  getPostListByCategory,
+  getRelaventPostList,
   createPost,
   updatePost,
   deletePost,
