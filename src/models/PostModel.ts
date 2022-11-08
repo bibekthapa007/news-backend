@@ -47,6 +47,12 @@ const PostSchema: Schema = new Schema(
   },
 );
 
+PostSchema.set('toJSON', {
+  transform: function (doc, ret, options) {
+    delete ret.__v;
+  },
+});
+
 PostSchema.pre('save', function (next) {
   if (!(this.isModified('title') || this.isNew)) return next();
   this.slug = `${slugify(this.title, { lower: true })}-${Date.now()}`;
