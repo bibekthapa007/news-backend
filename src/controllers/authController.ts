@@ -13,6 +13,8 @@ const router = Router();
 
 const client = new OAuth2Client();
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 async function verifyGoogleIdToken(token: string) {
   let GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
   let ticket = await client.verifyIdToken({
@@ -26,21 +28,35 @@ async function verifyGoogleIdToken(token: string) {
 async function googleLogin(req: Request, res: Response, next: NextFunction) {
   try {
     let { error, value } = Joi.object({
-      id_token: Joi.string().required(),
+      token: Joi.string().required(),
     }).validate(req.body);
 
     if (error) return next(new ValidationError(error.details[0].message));
-    let payload = await verifyGoogleIdToken(value.id_token as string);
+    let payload = await verifyGoogleIdToken(value.token as string);
 
     if (!payload) return next(new Error('payload not found.'));
     if (!payload?.email) return next(new Error('payload email not found.'));
 
-    const name = payload.email.substring(0, value.email.indexOf('@'));
-    let user = await User.create({ ...payload, name, role: 'user', verified: true });
+    let { email, name, sub: googleId, picture } = payload;
+
+    let oldUser = await User.findOne({ email: payload.email });
+    let user;
+    if (oldUser) {
+      user = oldUser;
+    } else {
+      user = await User.create({ email, name, role: 'user', imageLink: picture, verified: true });
+    }
+
     const token = createJwtToken({
       id: user.id,
       email: user.email,
       role: user.role,
+    });
+    res.cookie('token', token, {
+      httpOnly: true,
+      // secure: isProduction,
+      // expires: new Date(Date.now() + 60 * 20),
+      // sameSite: isProduction ? 'strict' : 'lax',
     });
     return res.status(200).send({ message: 'Login Successfully', user, token });
   } catch (error) {
@@ -71,7 +87,7 @@ async function signup(req: Request, res: Response, next: NextFunction) {
       email: user.email,
       role: user.role,
     });
-
+    res.cookie('token', token, { httpOnly: true, expires: new Date(Date.now() + 60 * 60) });
     return res.status(200).send({ message: 'Login Successfully', user, token });
   } catch (error) {
     next(error);
@@ -100,6 +116,7 @@ async function signin(req: Request, res: Response, next: NextFunction) {
       role: user.role,
     });
 
+    res.cookie('token', token, { httpOnly: true, expires: new Date(Date.now() + 60 * 60) });
     return res.status(200).send({ message: 'Login Successfully', user, token });
   } catch (error) {
     next(error);
@@ -118,4 +135,13 @@ async function check(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-export default { signup, signin, check, googleLogin };
+async function logout(req: Request, res: Response, next: NextFunction) {
+  try {
+    res.clearCookie('token');
+    res.end();
+  } catch (error) {
+    next(error);
+  }
+}
+
+export default { signup, signin, check, googleLogin, logout };
