@@ -18,6 +18,7 @@ function checkJwt(req: Request, res: Response, next: NextFunction) {
     if (req.headers['x-access-token']) token = req.headers['x-access-token'];
     if (req.headers['token']) token = req.headers['token'];
     if (req.query.token) token = req.query.token;
+    if (req.cookies.token) token = req.cookies.token;
 
     token = <string>token;
     if (!token) {
