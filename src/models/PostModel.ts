@@ -10,8 +10,6 @@ export interface IPost extends Document {
   isPublished: boolean;
   isSensitive: boolean;
   imageLink?: string;
-  link?: string;
-  linklabel?: string;
   author: string;
   categories: string[];
   tags: string[];
