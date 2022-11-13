@@ -8,14 +8,18 @@ import Post from '../models/PostModel';
 import { uploadFromBuffer } from '../utils/cloudinary';
 import Logger from 'src/utils/Logger';
 import UserModel from 'src/models/UserModel';
+import CategoryModel from 'src/models/CategoryModel';
 
 async function getPostList(req: Request, res: Response, next: NextFunction) {
   try {
     let perPage = parseInt(req.query.perPage as string) || 10;
     let page = parseInt(req.query.page as string) || 1;
     let skip = (page - 1) * perPage;
+    let filter = {} as any;
+    let category = req.query.category;
+    if (category) filter.categories = { _id: category };
 
-    let posts = await Post.find().limit(perPage).skip(skip).sort({ createdAt: -1 });
+    let posts = await Post.find(filter).limit(perPage).skip(skip).sort({ createdAt: -1 });
 
     return res.status(200).send({ message: 'posts fetched successfully.', posts });
   } catch (error) {
@@ -30,12 +34,14 @@ async function getPostListByCategory(req: Request, res: Response, next: NextFunc
     let skip = (page - 1) * perPage;
     let categoryId = req.params.categoryId;
 
+    let category = await CategoryModel.find({ _id: categoryId });
+
     let posts = await Post.find({ categories: { _id: categoryId } })
       .limit(perPage)
       .skip(skip)
       .sort({ createdAt: -1 });
 
-    return res.status(200).send({ message: 'posts fetched successfully.', posts });
+    return res.status(200).send({ message: 'posts fetched successfully.', posts, category });
   } catch (error) {
     next(error);
   }
@@ -55,9 +61,10 @@ async function getRelaventPostList(req: Request, res: Response, next: NextFuncti
       if (!releventCategories || releventCategories.length === 0) {
         return next(new Error('user has not selected any relevent categories.'));
       }
+
       if (releventCategories) {
         Logger.info(releventCategories);
-        filter = { category: { _id: { $in: releventCategories } } };
+        filter = { categories: { $in: [...releventCategories] } };
       }
     }
 
@@ -79,6 +86,30 @@ async function getPostById(req: Request, res: Response, next: NextFunction) {
     if (error) return next(new ValidationError(error.details[0].message));
 
     let post = await Post.findOne({ _id: value.id });
+    if (!post) next(new NotFoundError('post not found'));
+    return res.status(200).send({ message: 'post fetched successfully.', post });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getPostBySlug(req: Request, res: Response, next: NextFunction) {
+  try {
+    const slug = req.params.slug;
+    let { error, value } = Joi.object({
+      slug: Joi.string().required(),
+    }).validate({ slug });
+
+    if (error) return next(new ValidationError(error.details[0].message));
+
+    let post = await Post.findOne({ slug: slug });
+
+    let filter = {};
+
+    if (post?.categories) filter = { categories: { $in: [...post?.categories] } };
+
+    let relevantPosts = await Post.find(filter).limit(10).sort({ createdAt: -1 });
+
     if (!post) next(new NotFoundError('post not found'));
     return res.status(200).send({ message: 'post fetched successfully.', post });
   } catch (error) {
@@ -160,6 +191,7 @@ async function deletePost(req: Request, res: Response, next: NextFunction) {
 export default {
   getPostList,
   getPostById,
+  getPostBySlug,
   getPostListByCategory,
   getRelaventPostList,
   createPost,
