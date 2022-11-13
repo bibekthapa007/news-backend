@@ -15,6 +15,8 @@ router
   .put(checkJwt, postController.updatePost)
   .delete(checkJwt, postController.deletePost);
 
+router.route('/slug/:slug').get(postController.getPostBySlug);
+
 router.route('/category/:categoryId').get(postController.getPostListByCategory);
 
 export default router;
