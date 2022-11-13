@@ -45,6 +45,8 @@ const PostSchema: Schema = new Schema(
   },
 );
 
+PostSchema.index({ categories: 1 });
+
 PostSchema.set('toJSON', {
   transform: function (doc, ret, options) {
     delete ret.__v;
