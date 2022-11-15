@@ -127,7 +127,7 @@ async function check(req: Request, res: Response, next: NextFunction) {
   try {
     if (!req.jwtPayload) throw new TokenError('User unauthorized.');
 
-    let user = await User.findOne({ id: req.jwtPayload.id });
+    let user = await User.findOne({ _id: req.jwtPayload.id });
     if (!user) return res.status(404).send({ message: 'User not found.' });
     return res.status(200).send({ user, message: 'User is authorized.' });
   } catch (error) {
