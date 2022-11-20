@@ -9,6 +9,7 @@ export interface IUser extends Document {
   verified: boolean;
   password: string;
   role: string;
+  viewSensitive: boolean;
   releventCategories: string[];
 
   isValidPassword: (password: string) => Promise<boolean>;

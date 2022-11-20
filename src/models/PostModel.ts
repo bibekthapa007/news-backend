@@ -46,6 +46,8 @@ const PostSchema: Schema = new Schema(
 );
 
 PostSchema.index({ categories: 1 });
+PostSchema.index({ title: 'text' });
+PostSchema.index({ description: 'text' });
 
 PostSchema.set('toJSON', {
   transform: function (doc, ret, options) {
