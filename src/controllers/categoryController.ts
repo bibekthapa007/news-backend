@@ -51,7 +51,7 @@ async function createCategory(req: Request, res: Response, next: NextFunction) {
     }
 
     if (result && (result.secure_url as string)) {
-      value.image_link = result.secure_url;
+      value.imageLink = result.secure_url;
     }
 
     let category = await Category.create(value);
@@ -66,14 +66,30 @@ async function createCategory(req: Request, res: Response, next: NextFunction) {
 async function updateCategory(req: Request, res: Response, next: NextFunction) {
   try {
     const category_id = req.params.category_id;
+    delete req.body.userFiles;
     let { error, value } = Joi.object({
       _id: Joi.string().required(),
       title: Joi.string(),
       description: Joi.string(),
-      image_link: Joi.string().allow(null),
+      imageLink: Joi.string().allow(null),
     }).validate({ ...req.body, _id: category_id });
 
     if (error) return next(new ValidationError(error.details[0].message));
+
+    let result: null | any = null;
+    if (req.file) {
+      try {
+        result = await uploadFromBuffer(req, 'category');
+
+        console.log(result);
+      } catch (error) {
+        next(error);
+      }
+    }
+
+    if (result && (result.secure_url as string)) {
+      value.imageLink = result.secure_url;
+    }
 
     let category = await Category.findOneAndUpdate({ _id: value._id }, value, { new: true });
     if (!category) return next(new NotFoundError('category not found'));

@@ -6,7 +6,7 @@ import User from 'src/models/UserModel';
 
 async function updateUser(req: Request, res: Response, next: NextFunction) {
   try {
-    const userId = req.params.userId;
+    const userId = req.jwtPayload.id;
     let { error, value } = Joi.object({
       _id: Joi.string().required(),
       name: Joi.string(),

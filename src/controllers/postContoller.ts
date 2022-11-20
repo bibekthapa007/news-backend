@@ -49,10 +49,13 @@ async function getPostListByCategory(req: Request, res: Response, next: NextFunc
 
 async function getRelaventPostList(req: Request, res: Response, next: NextFunction) {
   try {
-    let perPage = parseInt(req.query.perPage as string) || 10;
-    let page = parseInt(req.query.page as string) || 1;
+    let perPage = parseInt(req.query.perPage as string);
+    let page = parseInt(req.query.page as string);
     let skip = (page - 1) * perPage;
-    let filter = {};
+    let filter = req.query.filter;
+    let query = {};
+
+    console.log(skip, query, filter);
 
     if (req.jwtPayload) {
       let user = await UserModel.findById(req.jwtPayload.id);
@@ -64,11 +67,11 @@ async function getRelaventPostList(req: Request, res: Response, next: NextFuncti
 
       if (releventCategories) {
         Logger.info(releventCategories);
-        filter = { categories: { $in: [...releventCategories] } };
+        query = { categories: { $in: [...releventCategories] } };
       }
     }
 
-    let posts = await Post.find(filter).limit(perPage).skip(skip).sort({ createdAt: -1 });
+    let posts = await Post.find(query).limit(perPage).skip(skip).sort({ createdAt: -1 });
 
     return res.status(200).send({ message: 'posts fetched successfully.', posts });
   } catch (error) {
@@ -122,9 +125,9 @@ async function createPost(req: Request, res: Response, next: NextFunction) {
     let { error, value } = Joi.object({
       title: Joi.string().required(),
       description: Joi.string().required(),
-      author: Joi.string().required(),
       categories: Joi.array().items(Joi.string().required()),
     }).validate(req.body);
+    value.author = req.jwtPayload.id;
 
     if (error) return next(new ValidationError(error.details[0].message));
 
@@ -138,7 +141,7 @@ async function createPost(req: Request, res: Response, next: NextFunction) {
     }
 
     if (result && (result.secure_url as string)) {
-      value.image_link = result.secure_url;
+      value.imageLink = result.secure_url;
     }
 
     let post = await Post.create(value);
@@ -151,15 +154,32 @@ async function createPost(req: Request, res: Response, next: NextFunction) {
 async function updatePost(req: Request, res: Response, next: NextFunction) {
   try {
     const postId = req.params.postId;
+    delete req.body.userFiles;
     let { error, value } = Joi.object({
       _id: Joi.string().required(),
       title: Joi.string(),
       description: Joi.string(),
-      image_link: Joi.string().allow(null),
+      imageLink: Joi.string().allow(null),
       tags: Joi.array<string>(),
+      isPublished: Joi.boolean().allow(null),
+      isSensitive: Joi.boolean().allow(null),
+      categories: Joi.array().items(Joi.string().required()),
     }).validate({ ...req.body, _id: postId });
 
     if (error) return next(new ValidationError(error.details[0].message));
+
+    let result: null | any = null;
+    if (req.file) {
+      try {
+        result = await uploadFromBuffer(req, 'post');
+      } catch (error) {
+        next(error);
+      }
+    }
+
+    if (result && (result.secure_url as string)) {
+      value.imageLink = result.secure_url;
+    }
 
     let post = await Post.findOneAndUpdate({ _id: value._id }, value, { new: true });
     if (!post) next(new NotFoundError('post not found'));
