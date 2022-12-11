@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import Joi from 'joi';
+import Joi, { boolean } from 'joi';
 import NotFoundError from '../errors/notFound';
 import ValidationError from '../errors/validation';
 import User from 'src/models/UserModel';
@@ -11,6 +11,10 @@ async function updateUser(req: Request, res: Response, next: NextFunction) {
       _id: Joi.string().required(),
       name: Joi.string(),
       role: Joi.string(),
+      gender: Joi.string(),
+      occupation: Joi.string(),
+      viewSensitive: Joi.boolean(),
+      viewPolitical: Joi.boolean(),
       imageLink: Joi.string().allow(null),
       releventCategories: Joi.array().items(Joi.string()),
     }).validate({ ...req.body, _id: userId });
