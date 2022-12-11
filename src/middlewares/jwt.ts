@@ -26,7 +26,10 @@ function checkJwt(req: Request, res: Response, next: NextFunction) {
     }
 
     jwt.verify(token, process.env.JWT_SECRET_KEY as string, function (err: any, data: any) {
-      if (err) return next(new TokenError(err.message));
+      if (err) {
+        res.clearCookie('token');
+        return next(new TokenError(err.message));
+      }
 
       data = <JwtPayload>data;
       req.jwtPayload = data;
