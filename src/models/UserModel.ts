@@ -5,11 +5,16 @@ export interface IUser extends Document {
   _id: string;
   name: string;
   email: string;
+  gender?: string;
+  occupation?: string;
   imageLink: string;
   verified: boolean;
   password: string;
   role: string;
   viewSensitive: boolean;
+  viewPolitical: boolean;
+  createdAt?: string;
+  updatedAt?: string;
   releventCategories: string[];
 
   isValidPassword: (password: string) => Promise<boolean>;
@@ -25,10 +30,14 @@ const UserSchema: Schema = new Schema(
       unique: true,
       required: true,
     },
+    gender: { type: 'string' },
+    occupation: { type: 'string' },
     imageLink: { type: 'string', required: false, trim: true },
     verified: { type: 'boolean', default: false },
     password: { type: 'string', trim: true, minLength: 6, maxLength: 100, required: false },
     role: { type: 'string', enum: ['superadmin', 'admin', 'user'] },
+    viewSensitive: { type: 'boolean', default: false },
+    viewPolitical: { type: 'boolean', default: false },
     releventCategories: [SchemaTypes.ObjectId],
   },
   {
